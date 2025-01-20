@@ -42,8 +42,123 @@ namespace Tools
             }
         }
 
+        /// PARTE AGGIUNTA AI X ASYNCH 
+        public async Task evento(ArrayList listPc, ArrayList listaBTN, ArrayList listaCHK, string type)
+        {
+            for (int i = 0; i < listaCHK.Count; i++)
+            {
+                CheckBox chk = (CheckBox)listaCHK[i];
+                PC pc = (PC)listPc[i];
+                Button btn = (Button)listaBTN[i];
 
-        public void evento(ArrayList listPc, ArrayList listaBTN, ArrayList listaCHK, string type)
+                if (chk.Checked)
+                {
+                    try
+                    {
+                        switch (type)
+                        {
+                            case "ping":
+                                await HandlePingAsync(pc, btn, chk);
+                                break;
+                            case "riavvio":
+                                await HandleRebootAsync(pc, btn, chk);
+                                break;
+                            case "off":
+                                await HandleShutdownAsync(pc, btn, chk);
+                                break;
+                            default:
+                                throw new ArgumentException("Tipo non supportato.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(pc, ex);
+                    }
+                }
+            }
+        }
+
+        private async Task HandlePingAsync(PC pc, Button btn, CheckBox chk)
+        {
+            try
+            {
+                Ping myPing = new Ping();
+                PingReply reply = await myPing.SendPingAsync(pc.Ip, 1000);
+
+                if (reply.Status == IPStatus.Success)
+                {
+                    btn.BackColor = Color.FromArgb(0, 255, 0); // Verde
+                }
+                else
+                {
+                    btn.BackColor = Color.FromArgb(255, 0, 0); // Rosso
+                    chk.Checked = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                btn.BackColor = Color.FromArgb(255, 165, 0); // Arancione
+                LogError(pc, ex);
+            }
+        }
+
+        private async Task HandleRebootAsync(PC pc, Button btn, CheckBox chk)
+        {
+            await ExecuteRemoteCommandAsync(pc, btn, chk, "-r -f -t 0", "RIAVVIO");
+        }
+
+        private async Task HandleShutdownAsync(PC pc, Button btn, CheckBox chk)
+        {
+            await ExecuteRemoteCommandAsync(pc, btn, chk, "-s -f -t 5", "SPENGO");
+        }
+
+        private async Task ExecuteRemoteCommandAsync(PC pc, Button btn, CheckBox chk, string command, string buttonText)
+        {
+            try
+            {
+                btn.Text = buttonText;
+                btn.BackColor = Color.FromArgb(0, 255, 0); // Verde
+
+                var credenziali = new ProcessStartInfo("net", $"use \\\\{pc.Ip}\\IPC$ {pc.Password} /USER:{pc.User}")
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                Process.Start(credenziali);
+
+                var shutdown = new ProcessStartInfo("shutdown", $"-m \\\\{pc.Ip} {command}")
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+
+                for (int r = 0; r < 3; r++)
+                {
+                    Process.Start(shutdown);
+                    await Task.Delay(500);
+                }
+
+                btn.BackColor = Color.FromArgb(0, 255, 0); // Verde se tutto va bene
+            }
+            catch (Exception ex)
+            {
+                btn.BackColor = Color.FromArgb(255, 0, 0); // Rosso in caso di errore
+                chk.Checked = false;
+                LogError(pc, ex);
+            }
+        }
+
+        private void LogError(PC pc, Exception ex)
+        {
+            // Log dell'errore (ad esempio in un file o una TextBox nell'interfaccia)
+            Console.WriteLine($"Errore su PC {pc.Nome} ({pc.Ip}): {ex.Message}");
+        }
+    
+
+    ///FINE PARTE AGGIUNTA
+
+        /*
+    public void evento(ArrayList listPc, ArrayList listaBTN, ArrayList listaCHK, string type)
         {
 
 
@@ -72,24 +187,9 @@ namespace Tools
 
                             if (reply.Status == IPStatus.Success) {
 
-                                /*
-                                string name = GetComputerName(pc.Ip);
-
-                                //string.Equals(a, b, StringComparison.CurrentCultureIgnoreCase);
-
-                                //if (pc.Nome == name)
-                                if (string.Equals(pc.Nome, name, StringComparison.CurrentCultureIgnoreCase))
-                                {
-                                */
                                     //btn.Text = pc.Nome;
                                     btn.BackColor = Color.FromArgb(0, 255, 0);
-                                /*
-                                }
-                                else 
-                                {
-                                    //btn.Text = pc.Nome;
-                                    btn.BackColor = Color.FromArgb(255, 255, 0);
-                                } */
+                      
                             }
                             else
                             {
@@ -205,7 +305,7 @@ namespace Tools
             }
 
         }
-
+*/
         private void _processKill(string macchina, string userM, string passwM)
         {
 
