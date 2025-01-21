@@ -102,11 +102,7 @@ namespace Tools
 
         }
 
-       
-        //PROVA ping ASYNC iniziale al momento non è asincrono
-        private async Task selTutto() {
-            foreach (CheckBox check in lista.getlistaCheck) check.Checked = true;
-        }
+
 
         //NUOVO SX SEL TUTTO, DX DESEL. TUTTO
         private void panelCMP_MouseClick(object sender, MouseEventArgs e)
@@ -205,6 +201,8 @@ namespace Tools
             function.evento(lista.getlistamacchine, lista.getlistaButton, lista.getlistaCheck, "ping");
         }
 
+
+
         private void refresh()
         {
             foreach (Button btn in lista.getlistaButton)
@@ -289,6 +287,12 @@ namespace Tools
         {
             refresh();
             function.copyFolder(lista.getlistamacchine, lista.getlistaButton, lista.getlistaCheck, readOrigin(), readDest());
+        }
+
+        private void Bspeed_Click(object sender, EventArgs e)
+        {
+            refresh();
+            function.evento(lista.getlistamacchine, lista.getlistaButton, lista.getlistaCheck, "speed");
         }
     }
 }

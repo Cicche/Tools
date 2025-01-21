@@ -144,15 +144,15 @@ namespace Tools
                     }
                 case "MFC":
                     {
-                        int nFile1 = (list.Count / 8) + 1;
-                        int nRiga1 = (list.Count - 1) / 8;
+                        int nFile2 = (list.Count / 6) + 1;
+                        int nRiga2 = (list.Count - 1) / 6;
 
-                        int saltoriga1 = 5 + (105 * nRiga1);
+                        int saltoriga2 = 5 + (105 * nRiga2);
 
-                        int countNuovaRiga1 = list.Count - 1 - (nRiga1 * 8);
+                        int countNuovaRiga2 = list.Count - 1 - (nRiga2 * 6);
 
 
-                        (list[list.Count - 1] as Button).Location = new Point(saltoriga1, 5 + (countNuovaRiga1) * 30);
+                        (list[list.Count - 1] as Button).Location = new Point(saltoriga2, 5 + (countNuovaRiga2) * 30);
                         (list[list.Count - 1] as Button).BackColor = Color.LightGray;
                         (list[list.Count - 1] as Button).Name = pc.Nome;
                         (list[list.Count - 1] as Button).Text = pc.Nome.ToUpper();
@@ -230,12 +230,12 @@ namespace Tools
                     {
                         list.Add(new CheckBox());
 
-                        int nFile = (list.Count / 8) + 1;
-                        int nRiga = (list.Count - 1) / 8;
+                        int nFile = (list.Count / 6) + 1;
+                        int nRiga = (list.Count - 1) / 6;
 
                         int saltoriga = 90 + (105 * nRiga);
 
-                        int countNuovaRiga = list.Count - 1 - (nRiga * 8);
+                        int countNuovaRiga = list.Count - 1 - (nRiga * 6);
 
                         (list[list.Count - 1] as CheckBox).Location = new Point(saltoriga, 15 + (countNuovaRiga) * 30);
                         (list[list.Count - 1] as CheckBox).Name = pc.Nome;

@@ -3,8 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -66,6 +68,9 @@ namespace Tools
                             case "off":
                                 await HandleShutdownAsync(pc, btn, chk);
                                 break;
+                            case "speed":
+                                await HandleSpeedTestAsync(pc, btn);
+                                break;
                             default:
                                 throw new ArgumentException("Tipo non supportato.");
                         }
@@ -83,7 +88,7 @@ namespace Tools
             try
             {
                 Ping myPing = new Ping();
-                PingReply reply = await myPing.SendPingAsync(pc.Ip, 1000);
+                PingReply reply = await myPing.SendPingAsync(pc.Ip, 200);
 
                 if (reply.Status == IPStatus.Success)
                 {
@@ -101,6 +106,84 @@ namespace Tools
                 LogError(pc, ex);
             }
         }
+
+        private async Task HandleSpeedTestAsync(PC pc, Button btn)
+        {
+            try
+            {
+
+                    double speed = await TestNetworkSpeedAsync(pc, 10); // Test con un file di 10 MB
+                    string speedText = $"{speed:F2} Mb/s";
+                    string name = pc.Nome.ToUpper();
+                    // btn.Text = $"{name} ({speedText})";
+                    btn.Text = $"{speedText}";
+
+                    if (speed > 100)
+                    {
+                        btn.BackColor = Color.FromArgb(0, 255, 0); // Verde
+                    }
+                    else if (speed > 10)
+                    {
+                        btn.BackColor = Color.FromArgb(255, 255, 0); // Giallo
+                    }
+                    else
+                    {
+                        btn.BackColor = Color.FromArgb(255, 0, 0); // Rosso
+                    }
+         
+            }
+            catch (Exception ex)
+            {
+                btn.BackColor = Color.FromArgb(255, 165, 0); // Arancione
+                LogError(pc, ex);
+            }
+        }
+
+
+
+        private async Task<double> TestNetworkSpeedAsync(PC pc, int fileSizeMb)
+        {
+            try
+            {
+                // Creazione dinamica del file
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "testfile.dat");
+                byte[] data = new byte[fileSizeMb * 1024 * 1024]; // Dimensione del file in MB
+                new Random().NextBytes(data); // Riempie il file con dati casuali
+                File.WriteAllBytes(filePath, data);
+
+                var stopwatch = Stopwatch.StartNew();
+
+                // Trasferimento del file remoto
+                string remotePath = $"\\\\{pc.Ip}\\c$\\testfile.dat";
+                var credenziali = new ProcessStartInfo("net", $"use \\\\{pc.Ip}\\IPC$ {pc.Password} /USER:{pc.User}")
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                Process.Start(credenziali);
+
+                using (var sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                using (var destinationStream = new FileStream(remotePath, FileMode.Create, FileAccess.Write))
+                {
+                    await sourceStream.CopyToAsync(destinationStream);
+                }
+
+                stopwatch.Stop();
+
+                double elapsedSeconds = stopwatch.ElapsedMilliseconds / 1000.0;
+                double fileSizeMbDouble = fileSizeMb;
+
+                File.Delete(filePath); // Rimuove il file di test locale
+
+                return fileSizeMbDouble / elapsedSeconds; // Velocità in MB/s
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Errore nel trasferimento del file.", ex);
+            }
+        }
+
+
 
         private async Task HandleRebootAsync(PC pc, Button btn, CheckBox chk)
         {
