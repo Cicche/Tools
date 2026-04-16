@@ -5,7 +5,7 @@ VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools", "Tools.csproj", "{21392235-9BE2-4AFC-AB2C-EDDF382F9452}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools.Wpf", "Tools.Wpf\Tools.Wpf.csproj", "{C6E4AFFA-8F37-457A-92CC-BD10EF86D5BD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools_2.0", "Tools.Wpf\Tools_2.0.csproj", "{C6E4AFFA-8F37-457A-92CC-BD10EF86D5BD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
