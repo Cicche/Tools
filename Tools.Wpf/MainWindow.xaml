@@ -1,0 +1,511 @@
+﻿<Window x:Class="Tools.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Tools" Height="760" Width="1000"
+        MinWidth="1000"
+        MinHeight="760"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="#1E252C"
+        WindowStartupLocation="CenterScreen">
+    <WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <SolidColorBrush x:Key="AppBgBrush" Color="#1E252C"/>
+        <SolidColorBrush x:Key="PanelBgBrush" Color="#2A343E"/>
+        <SolidColorBrush x:Key="PanelBorderBrush" Color="#3E4C58"/>
+        <SolidColorBrush x:Key="CategoryCardBrush" Color="#334252"/>
+        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#E6EDF3"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#5AA6D8"/>
+
+        <Style TargetType="GroupBox">
+            <Setter Property="Background" Value="{StaticResource PanelBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#3A4956"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
+            <Setter Property="BorderBrush" Value="#546575"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#2F3A44"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
+            <Setter Property="BorderBrush" Value="#546575"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4,2"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
+        </Style>
+
+        <DataTemplate x:Key="CategoryPanelTemplate">
+            <Border Margin="2"
+                    Padding="8"
+                    MinHeight="{Binding PanelMinHeight}"
+                    Background="{StaticResource CategoryCardBrush}"
+                    BorderBrush="#425564"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    PreviewMouseLeftButtonUp="CategoryPanel_MouseLeftButtonUp"
+                    PreviewMouseRightButtonUp="CategoryPanel_MouseRightButtonUp">
+                <Grid ClipToBounds="True">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,2">
+                        <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="Bold" FontSize="12"/>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Width="28"
+                                    Height="28"
+                                    Margin="4,0,0,0"
+                                    Foreground="White"
+                                    Background="#425564"
+                                    BorderBrush="#6C8193"
+                                    BorderThickness="1.2"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"
+                                    Padding="0"
+                                    Tag="{Binding Name}"
+                                    Click="BtnCategoryAction_OnClick">
+                                <TextBlock Text="+"
+                                           FontSize="18"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="0,-2,0,0"/>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Machines}" Height="{Binding ItemsHostHeight}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Vertical" IsItemsHost="True"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,0,4,4" LastChildFill="False" HorizontalAlignment="Left">
+                                    <Button Width="102"
+                                            Height="28"
+                                            Margin="0,0,4,0"
+                                            Content="{Binding Name}"
+                                            FontSize="11"
+                                            FontWeight="SemiBold"
+                                            Tag="{Binding}"
+                                            Click="MachineButton_OnClick">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="{Binding Background}"/>
+                                                <Setter Property="Foreground" Value="#0F1720"/>
+                                                <Setter Property="BorderBrush" Value="#DCE3EA"/>
+                                                <Setter Property="BorderThickness" Value="1.3"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                                                        <Setter Property="Opacity" Value="0.55"/>
+                                                        <Setter Property="BorderThickness" Value="2"/>
+                                                        <Setter Property="BorderBrush" Value="Gold"/>
+                                                        <Setter Property="ToolTip" Value="Operazione in corso"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="BorderThickness" Value="2"/>
+                                                        <Setter Property="BorderBrush" Value="#39FF14"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="File Explorer" Click="MachineOpenExplorer_OnClick"/>
+                                                <MenuItem Header="Desktop Remoto" Click="MachineOpenRdp_OnClick"/>
+                                                <Separator/>
+                                                <MenuItem Header="Edit" Click="MachineEdit_OnClick"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                    </Button>
+                                    <CheckBox Width="16"
+                                              VerticalAlignment="Center"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid Margin="8" Background="{StaticResource AppBgBrush}" SnapsToDevicePixels="True">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="214"/>
+            <ColumnDefinition Width="26"/>
+            <ColumnDefinition x:Name="ScannerColumn" Width="0"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="0"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Grid.ColumnSpan="4"
+                Background="#26313A"
+                BorderBrush="#3A4A58"
+                BorderThickness="1"
+                CornerRadius="6"
+                Margin="0,0,0,8"
+                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <DockPanel LastChildFill="True" Height="38">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Width="34" Height="28" Margin="0,5,4,5" Click="BtnWindowMin_Click" ToolTip="Minimizza">_</Button>
+                    <Button Width="34" Height="28" Margin="0,5,4,5" Click="BtnWindowMax_Click" ToolTip="Massimizza">[ ]</Button>
+                    <Button Width="34" Height="28" Margin="0,5,6,5" Click="BtnWindowClose_Click" ToolTip="Chiudi">X</Button>
+                </StackPanel>
+                <TextBlock Text="TOOLS"
+                           VerticalAlignment="Center"
+                           Margin="10,0,0,0"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource PrimaryTextBrush}"/>
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                Grid.Column="0"
+                Margin="0,0,0,8"
+                Background="{StaticResource PanelBgBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="8,6"
+                HorizontalAlignment="Left" Grid.ColumnSpan="4" Width="967">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock VerticalAlignment="Center" Margin="0,0,8,0">Origine copy</TextBlock>
+                <Button Name="BtnBrowseCopyOrigin"
+                        Width="26"
+                        Height="24"
+                        Margin="0,0,6,0"
+                        Padding="0"
+                        ToolTip="Sfoglia cartella origine"
+                        Click="BtnBrowseCopyOrigin_OnClick">...</Button>
+                <TextBox Name="TxtCopyOrigin"
+                         Width="250"
+                         Margin="0,0,12,0"
+                         Text="{Binding CopyOrigin, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock VerticalAlignment="Center" Margin="0,0,8,0">Destinazione copy</TextBlock>
+                <TextBox Name="TxtCopyDestination"
+                         Width="242"
+                         Margin="0,0,12,0"
+                         Text="{Binding CopyDestination, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Name="BtnCopySelected"
+                        Width="88"
+                        Height="24"
+                        Click="BtnCopySelected_OnClick">Copy</Button>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2"
+              Grid.Column="0"
+              Margin="0,0,6,0"
+              ClipToBounds="True"
+              MinWidth="{Binding CategoriesContainerMinWidth}"
+              MinHeight="{Binding CategoriesContainerMinHeight}">
+            <ItemsControl Name="ItemsCategories" ItemsSource="{Binding CategoryRows}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Vertical"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ContentControl Grid.Column="0"
+                                            Margin="0,0,2,0"
+                                            Content="{Binding Left}"
+                                            ContentTemplate="{StaticResource CategoryPanelTemplate}"/>
+                            <ContentControl Grid.Column="1"
+                                            Margin="2,0,0,0"
+                                            Content="{Binding Right}"
+                                            ContentTemplate="{StaticResource CategoryPanelTemplate}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Grid.Column="1"
+                Margin="8,0,0,0"
+                Background="{StaticResource PanelBgBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Margin="0,0,0,8"
+                        Padding="6"
+                        Background="#2F3A44"
+                        BorderBrush="#546575"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="Azioni"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+                        <TextBlock Grid.Column="1" Text="Timeout(ms)" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Grid.Column="2"
+                                 Name="TxtTimeoutMs"
+                                 Width="56"
+                                 Margin="0,0,10,0"
+                                 Text="{Binding TimeoutMs, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Grid.Column="3" Text="Retry" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Grid.Column="4"
+                                 Name="TxtRetryCount"
+                                 Width="36"
+                                 Text="{Binding RetryCount, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Row="1">
+                    <Button Name="BtnPingSelected" Height="34" Margin="0,0,0,6" Click="BtnPingSelected_OnClick">Ping</Button>
+                    <Button Name="BtnRebootSelected" Height="34" Margin="0,0,0,6" Click="BtnRebootSelected_OnClick">Riavvio</Button>
+                    <Button Name="BtnShutdownSelected" Height="34" Margin="0,0,0,6" Click="BtnShutdownSelected_OnClick">Shutdown</Button>
+                    <Button Name="BtnKillSelected" Height="34" Margin="0,0,0,6" Click="BtnKillSelected_OnClick">Kill</Button>
+                    <Button Name="BtnRefreshView" Height="34" Margin="0,0,0,14" Click="BtnRefreshView_OnClick">Refresh UI</Button>
+                    <Button Name="BtnResetCredentials" Height="34" Margin="0,0,0,6" Click="BtnResetCredentials_OnClick">Reset credenziali</Button>
+                    <Button Name="BtnCancelBatch" Height="34" Margin="0,0,0,0" Click="BtnCancelBatch_OnClick" IsEnabled="False">Annulla Batch</Button>
+                </StackPanel>
+
+                <Border Grid.Row="3"
+                        Margin="0,10,0,0"
+                        Background="#2F3A44"
+                        BorderBrush="#546575"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="6">
+                    <StackPanel>
+                        <TextBlock Margin="0,0,0,6" FontWeight="Bold">Legenda risultati</TextBlock>
+                        <Button Height="26"
+                                Margin="0,0,0,4"
+                                Content="OK"
+                                IsTabStop="False"
+                                Focusable="False"
+                                Background="#74E08A"
+                                Foreground="#04110A"
+                                BorderBrush="#A3D8AF"
+                                BorderThickness="1.2"/>
+                        <Button Height="26"
+                                Margin="0,0,0,4"
+                                Content="ERROR"
+                                IsTabStop="False"
+                                Focusable="False"
+                                Background="#CD5C5C"
+                                Foreground="#FFFFFF"
+                                BorderBrush="#E09090"
+                                BorderThickness="1.2"/>
+                        <Button Height="26"
+                                Content="FAULT"
+                                IsTabStop="False"
+                                Focusable="False"
+                                Background="#C58B2A"
+                                Foreground="#1F1300"
+                                BorderBrush="#DDA95A"
+                                BorderThickness="1.2"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Button Grid.Row="2"
+                Grid.Column="2"
+                Name="BtnScannerToggle"
+                Width="22"
+                Height="54"
+                Margin="2,8,2,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                Click="BtnScannerToggle_OnClick">></Button>
+
+        <Border Grid.Row="2"
+                Grid.Column="3"
+                Name="ScannerPanel"
+                Margin="0,0,0,0"
+                Background="{StaticResource PanelBgBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="8"
+                Visibility="Collapsed"
+                Opacity="0">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ScannerPanelTranslate" X="24"/>
+            </Border.RenderTransform>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Scanner IP" FontWeight="Bold" Margin="0,0,0,8"/>
+
+                <Grid Grid.Row="1" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,4">Start</TextBlock>
+                    <TextBox Grid.Row="0" Grid.Column="1" Name="TxtScanStart" Margin="0,0,0,4"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,4">End</TextBlock>
+                    <TextBox Grid.Row="1" Grid.Column="1" Name="TxtScanEnd" Margin="0,0,0,4"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,0">Timeout</TextBlock>
+                    <TextBox Grid.Row="2" Grid.Column="1" Name="TxtScanTimeout" Text="600"/>
+                </Grid>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Name="BtnScanStart" Width="120" Margin="0,0,8,0" Click="BtnScanStart_OnClick">Avvia Scan</Button>
+                    <Button Name="BtnScanStop" Width="70" Click="BtnScanStop_OnClick" IsEnabled="False">Stop</Button>
+                </StackPanel>
+
+                <DataGrid Grid.Row="3"
+                          Name="DgScanResults"
+                          PreviewMouseRightButtonDown="DgScanResults_PreviewMouseRightButtonDown"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          RowHeaderWidth="0"
+                          Background="#1B252E"
+                          Foreground="#E6EDF3"
+                          BorderBrush="#2C3E4B"
+                          BorderThickness="1">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="{x:Type DataGridRow}">
+                            <EventSetter Event="MouseDoubleClick" Handler="ScanResultRow_MouseDoubleClick"/>
+                            <Setter Property="Background" Value="#1B252E"/>
+                            <Setter Property="Foreground" Value="#D9E3EC"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#25323D"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#334252"/>
+                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Resources>
+                        <Style TargetType="{x:Type DataGridColumnHeader}">
+                            <Setter Property="Background" Value="#2F3A44"/>
+                            <Setter Property="Foreground" Value="#E6EDF3"/>
+                            <Setter Property="BorderBrush" Value="#546575"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Padding" Value="6,4"/>
+                        </Style>
+                        <Style TargetType="{x:Type DataGridCell}">
+                            <Setter Property="Background" Value="#1B252E"/>
+                            <Setter Property="Foreground" Value="#D9E3EC"/>
+                            <Setter Property="BorderBrush" Value="#364656"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            <Setter Property="Padding" Value="6,3"/>
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                        </Style>
+                    </DataGrid.Resources>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="IP" Binding="{Binding Ip}" Width="120"/>
+                        <DataGridTextColumn Header="Host" Binding="{Binding Host}" Width="*"/>
+                    </DataGrid.Columns>
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Aggiungi macchina..." Click="ScanResultAddMachine_OnClick"/>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="3" Grid.ColumnSpan="4" Margin="0,0,0,0" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <ProgressBar Name="BatchProgressBar"
+                         Grid.Column="0"
+                         Minimum="0"
+                         Maximum="100"
+                         Height="18"
+                         Foreground="#39FF14"
+                         Background="#1D2A34"
+                         Margin="0,0,12,0"/>
+            <TextBlock Name="TxtBatchStatus"
+                       Grid.Column="1"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource PrimaryTextBrush}"/>
+        </Grid>
+
+        <GroupBox Header="Log" Grid.Row="4" Grid.ColumnSpan="4" MinHeight="80">
+            <RichTextBox Name="TxtLog"
+                         Margin="8"
+                         IsReadOnly="True"
+                         VerticalScrollBarVisibility="Auto"
+                         Background="#0D1216"
+                         Foreground="#7CFC00"
+                         BorderBrush="#2C3E4B"
+                         BorderThickness="1"/>
+        </GroupBox>
+    </Grid>
+</Window>
+
