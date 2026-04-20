@@ -245,6 +245,7 @@ namespace Tools.Core.Services
             OperationResult validation = ValidateMachine(pc);
             if (!validation.Success) return validation;
 
+            string connectedShare = null;
             try
             {
                 if (string.IsNullOrWhiteSpace(origin) || string.IsNullOrWhiteSpace(destination))
@@ -272,11 +273,11 @@ namespace Tools.Core.Services
                 {
                     return OperationResult.Fail($"Connessione share fallita (codice {connectCode}).", OperationErrorCode.ExternalProcessError, pc);
                 }
+                connectedShare = targetShare;
 
                 string sourcePath = origin.Trim();
                 string remotePath = BuildRemoteDestinationPath(pc.Ip, destination);
                 CopyPath(sourcePath, remotePath);
-                Process.Start("explorer", remotePath);
                 return OperationResult.Ok("Copia completata.", pc);
             }
             catch (IOException ioEx)
@@ -290,6 +291,10 @@ namespace Tools.Core.Services
             catch (Exception ex)
             {
                 return OperationResult.Fail(ex.Message, OperationErrorCode.ExternalProcessError, pc);
+            }
+            finally
+            {
+                DisconnectShare(connectedShare);
             }
         }
 
@@ -561,6 +566,19 @@ namespace Tools.Core.Services
             }
 
             return result;
+        }
+
+        private static void DisconnectShare(string remoteShare)
+        {
+            if (string.IsNullOrWhiteSpace(remoteShare)) return;
+            try
+            {
+                WNetCancelConnection2(remoteShare, 0, true);
+            }
+            catch
+            {
+                // No throw: disconnessione best-effort.
+            }
         }
 
         private static OperationErrorCode MapWmiReturnCode(uint returnCode)

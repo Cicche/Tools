@@ -62,6 +62,19 @@ namespace Tools.Core.Services
             }
 
             var categoryCredentials = repository.LoadCategoryCredentials(xmlPath);
+            bool hasLegacyCategoryCredentials = categoryCredentials.Count > 0;
+            bool hasLegacyMachineCredentials = Macchine.HasLegacyCredentials(validation.ValidMachines);
+
+            if ((hasLegacyMachineCredentials || hasLegacyCategoryCredentials) && strictMode)
+            {
+                result.BlockedByStrictMode = true;
+                result.Messages.Add(
+                    "Modalita STRICT attiva: credenziali in chiaro trovate nel file XML (macchina/categoria).\n" +
+                    "Rimuovere User/Password dal file oppure disattivare Credentials.StrictMode.");
+                logger.Warn("CREDENTIALS", "Modalita STRICT: credenziali legacy in chiaro trovate.");
+                return result;
+            }
+
             foreach (var kv in categoryCredentials)
             {
                 credentialService.SetCategoryCredentials(kv.Key, kv.Value.User, kv.Value.Password);
@@ -79,18 +92,6 @@ namespace Tools.Core.Services
             }
 
             bool hasLegacyCredentials = Macchine.HasLegacyCredentials(validation.ValidMachines);
-            bool hasLegacyCategoryCredentials = categoryCredentials.Count > 0;
-
-            if ((hasLegacyCredentials || hasLegacyCategoryCredentials) && strictMode)
-            {
-                result.BlockedByStrictMode = true;
-                result.Messages.Add(
-                    "Modalita STRICT attiva: credenziali in chiaro trovate nel file XML (macchina/categoria).\n" +
-                    "Rimuovere User/Password dal file oppure disattivare Credentials.StrictMode.");
-                logger.Warn("CREDENTIALS", "Modalita STRICT: credenziali legacy in chiaro trovate.");
-                return result;
-            }
-
             if (hasLegacyCredentials)
             {
                 int migrated = credentialService.MigrateFromLegacyXml(validation.ValidMachines);

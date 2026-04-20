@@ -66,6 +66,7 @@ namespace Tools.Wpf
 
         private readonly MainViewModel viewModel = new MainViewModel();
         private readonly ObservableCollection<ScanResultRow> scanResults = new ObservableCollection<ScanResultRow>();
+        private readonly List<ScanNetworkOption> scanNetworkOptions = new List<ScanNetworkOption>();
         private List<PC> loadedMachines = new List<PC>();
         private CancellationTokenSource batchCts;
         private CancellationTokenSource scanCts;
@@ -90,6 +91,16 @@ namespace Tools.Wpf
             public uint IpOrder { get; set; }
         }
 
+        private sealed class ScanNetworkOption
+        {
+            public string AdapterName { get; set; }
+            public string StartIp { get; set; }
+            public string EndIp { get; set; }
+            public bool IsDefault { get; set; }
+            public string Display =>
+                $"{(IsDefault ? "[Default] " : string.Empty)}{AdapterName} ({StartIp} - {EndIp})";
+        }
+
         public MainWindow()
         {
             InitializeComponent();
@@ -101,7 +112,7 @@ namespace Tools.Wpf
                 PagePadding = new Thickness(0),
                 LineHeight = double.NaN
             };
-            InitializeDefaultScanRange();
+            InitializeScanNetworkOptions();
             LoadMachines();
         }
 
@@ -301,6 +312,12 @@ namespace Tools.Wpf
         private void BtnScanStop_OnClick(object sender, RoutedEventArgs e)
         {
             scanCts?.Cancel();
+        }
+
+        private void CmbScanNetworks_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!(CmbScanNetworks.SelectedItem is ScanNetworkOption option)) return;
+            ApplyScanNetwork(option);
         }
 
         private void BtnResetCredentials_OnClick(object sender, RoutedEventArgs e)
@@ -777,12 +794,6 @@ namespace Tools.Wpf
                 }
 
                 bool strictMode = IsStrictCredentialModeEnabled();
-                if (schemaKind == XmlSchemaKind.Legacy && strictMode)
-                {
-                    strictMode = false;
-                    AppendLog("STRICT mode bypass temporaneo per migrazione automatica legacy -> moderno.", LogSeverity.Warning);
-                }
-
                 BootstrapResult bootstrap = coreFacade.Bootstrap(viewModel.XmlPath, strictMode);
 
                 foreach (string message in bootstrap.Messages)
@@ -1160,7 +1171,11 @@ namespace Tools.Wpf
                 Task finished = await Task.WhenAny(runTask, Task.Delay(timeoutMs, token));
                 if (finished != runTask)
                 {
-                    last = OperationResult.Fail($"Timeout dopo {timeoutMs}ms.", OperationErrorCode.Timeout, machine);
+                    ObserveLateCompletion(runTask, operationName, machine);
+                    last = OperationResult.Fail(
+                        $"Timeout dopo {timeoutMs}ms. L'operazione potrebbe comunque completarsi sul target.",
+                        OperationErrorCode.Timeout,
+                        machine);
                 }
                 else
                 {
@@ -1229,63 +1244,97 @@ namespace Tools.Wpf
                    !string.IsNullOrWhiteSpace(row.Source.Password);
         }
 
-        private void InitializeDefaultScanRange()
+        private void InitializeScanNetworkOptions()
         {
-            if (TryGetPrimaryNetworkRange(out string start, out string end))
+            scanNetworkOptions.Clear();
+            scanNetworkOptions.AddRange(DiscoverScanNetworkOptions());
+
+            if (scanNetworkOptions.Count == 0)
             {
-                TxtScanStart.Text = start;
-                TxtScanEnd.Text = end;
-                return;
+                scanNetworkOptions.Add(new ScanNetworkOption
+                {
+                    AdapterName = "Fallback",
+                    StartIp = "192.168.1.1",
+                    EndIp = "192.168.1.254",
+                    IsDefault = true
+                });
             }
 
-            TxtScanStart.Text = "192.168.1.1";
-            TxtScanEnd.Text = "192.168.1.254";
+            CmbScanNetworks.DisplayMemberPath = nameof(ScanNetworkOption.Display);
+            CmbScanNetworks.ItemsSource = scanNetworkOptions;
+            ScanNetworkOption preferred = scanNetworkOptions.FirstOrDefault(x => x.IsDefault) ?? scanNetworkOptions.First();
+            CmbScanNetworks.SelectedItem = preferred;
+            ApplyScanNetwork(preferred);
         }
 
-        private static bool TryGetPrimaryNetworkRange(out string start, out string end)
+        private static List<ScanNetworkOption> DiscoverScanNetworkOptions()
         {
-            start = null;
-            end = null;
+            var options = new List<ScanNetworkOption>();
+            var seenRanges = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
                 var adapters = NetworkInterface.GetAllNetworkInterfaces()
                     .Where(n =>
                         n.OperationalStatus == OperationalStatus.Up &&
-                        n.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
-                        n.GetIPProperties().GatewayAddresses.Any(g =>
-                            g?.Address != null &&
-                            g.Address.AddressFamily == AddressFamily.InterNetwork))
+                        n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
                     .ToList();
 
                 foreach (NetworkInterface adapter in adapters)
                 {
-                    var unicast = adapter.GetIPProperties().UnicastAddresses
-                        .FirstOrDefault(u =>
-                            u?.Address != null &&
-                            u.Address.AddressFamily == AddressFamily.InterNetwork &&
-                            u.IPv4Mask != null);
-                    if (unicast == null) continue;
+                    IPInterfaceProperties props = adapter.GetIPProperties();
+                    bool hasIpv4Gateway = props.GatewayAddresses.Any(g =>
+                        g?.Address != null &&
+                        g.Address.AddressFamily == AddressFamily.InterNetwork &&
+                        !g.Address.Equals(IPAddress.Any));
 
-                    uint ip = IpToUInt(unicast.Address);
-                    uint mask = IpToUInt(unicast.IPv4Mask);
-                    uint network = ip & mask;
-                    uint broadcast = network | ~mask;
-                    if (broadcast <= network + 1) continue;
+                    foreach (UnicastIPAddressInformation unicast in props.UnicastAddresses)
+                    {
+                        if (unicast?.Address == null ||
+                            unicast.Address.AddressFamily != AddressFamily.InterNetwork ||
+                            unicast.IPv4Mask == null)
+                        {
+                            continue;
+                        }
 
-                    uint first = network + 1;
-                    uint last = broadcast - 1;
-                    start = UIntToIp(first);
-                    end = UIntToIp(last);
-                    return true;
+                        uint ip = IpToUInt(unicast.Address);
+                        uint mask = IpToUInt(unicast.IPv4Mask);
+                        uint network = ip & mask;
+                        uint broadcast = network | ~mask;
+                        if (broadcast <= network + 1) continue;
+
+                        string first = UIntToIp(network + 1);
+                        string last = UIntToIp(broadcast - 1);
+                        string rangeKey = first + "|" + last;
+                        if (!seenRanges.Add(rangeKey)) continue;
+
+                        options.Add(new ScanNetworkOption
+                        {
+                            AdapterName = string.IsNullOrWhiteSpace(adapter.Name) ? adapter.Description : adapter.Name,
+                            StartIp = first,
+                            EndIp = last,
+                            IsDefault = hasIpv4Gateway
+                        });
+                    }
                 }
             }
             catch
             {
-                return false;
+                // fallback gestito dal chiamante
             }
 
-            return false;
+            return options
+                .OrderByDescending(x => x.IsDefault)
+                .ThenBy(x => x.AdapterName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => IpToUInt(IPAddress.Parse(x.StartIp)))
+                .ToList();
+        }
+
+        private void ApplyScanNetwork(ScanNetworkOption option)
+        {
+            if (option == null) return;
+            TxtScanStart.Text = option.StartIp;
+            TxtScanEnd.Text = option.EndIp;
         }
 
         private static bool TryParseIpRange(string startIp, string endIp, out uint start, out uint end, out string error)
@@ -1329,6 +1378,7 @@ namespace Tools.Wpf
         private async Task ScanRangeAsync(uint start, uint end, int timeoutMs, CancellationToken token)
         {
             const int parallelism = 64;
+            const int dnsTimeoutMs = 1200;
             var gate = new SemaphoreSlim(parallelism);
             var tasks = new List<Task>();
 
@@ -1352,8 +1402,13 @@ namespace Tools.Wpf
                         string hostName = string.Empty;
                         try
                         {
-                            IPHostEntry host = await Dns.GetHostEntryAsync(ipString);
-                            hostName = NormalizeHostName(host?.HostName ?? string.Empty);
+                            Task<IPHostEntry> dnsTask = Dns.GetHostEntryAsync(ipString);
+                            Task dnsFinished = await Task.WhenAny(dnsTask, Task.Delay(dnsTimeoutMs, token));
+                            if (dnsFinished == dnsTask)
+                            {
+                                IPHostEntry host = await dnsTask;
+                                hostName = NormalizeHostName(host?.HostName ?? string.Empty);
+                            }
                         }
                         catch
                         {
@@ -1634,18 +1689,51 @@ namespace Tools.Wpf
             return string.Empty;
         }
 
+        private void ObserveLateCompletion(Task<OperationResult> runTask, string operationName, PC machine)
+        {
+            if (runTask == null) return;
+
+            runTask.ContinueWith(task =>
+            {
+                try
+                {
+                    string machineLabel = $"{machine?.Nome ?? "(sconosciuta)"} ({machine?.Ip ?? "?"})";
+                    if (task.IsCanceled)
+                    {
+                        AppendLog($"[{operationName}] completamento tardivo annullato - {machineLabel}", LogSeverity.Warning);
+                        return;
+                    }
+
+                    if (task.IsFaulted)
+                    {
+                        string err = task.Exception?.GetBaseException()?.Message ?? "errore non specificato";
+                        AppendLog($"[{operationName}] completamento tardivo con errore - {machineLabel}: {err}", LogSeverity.Warning);
+                        return;
+                    }
+
+                    OperationResult late = task.Result;
+                    if (late == null)
+                    {
+                        AppendLog($"[{operationName}] completamento tardivo senza risultato - {machineLabel}", LogSeverity.Warning);
+                        return;
+                    }
+
+                    string status = late.Success ? "OK" : $"KO [{late.Code}]";
+                    LogSeverity sev = late.Success ? LogSeverity.Warning : ResolveSeverity(late);
+                    AppendLog($"[{operationName}] completamento tardivo - {machineLabel}: {status} - {late.Message}", sev);
+                }
+                catch
+                {
+                    // no-op
+                }
+            }, TaskScheduler.Default);
+        }
+
         private void OpenCurrentLogFile()
         {
             try
             {
                 string logsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
-                string todayLog = Path.Combine(logsDir, $"tools-{DateTime.Now:yyyyMMdd}.log");
-                if (File.Exists(todayLog))
-                {
-                    Process.Start(todayLog);
-                    return;
-                }
-
                 if (!Directory.Exists(logsDir))
                 {
                     AppendLog("Log file non trovato: cartella Logs assente.", LogSeverity.Warning);
