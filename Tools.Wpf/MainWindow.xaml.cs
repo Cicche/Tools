@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -95,6 +96,11 @@ namespace Tools.Wpf
             DataContext = viewModel;
             viewModel.XmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tool_List.xml");
             DgScanResults.ItemsSource = scanResults;
+            TxtLog.Document = new FlowDocument
+            {
+                PagePadding = new Thickness(0),
+                LineHeight = double.NaN
+            };
             InitializeDefaultScanRange();
             LoadMachines();
         }
@@ -322,6 +328,17 @@ namespace Tools.Wpf
             string selected = SelectFolderPath(viewModel.CopyOrigin);
             if (string.IsNullOrWhiteSpace(selected)) return;
             viewModel.CopyOrigin = selected;
+        }
+
+        private void TxtLog_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            OpenCurrentLogFile();
+        }
+
+        private void TxtLog_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            OpenCurrentLogFile();
         }
 
         private async void MachineButton_OnClick(object sender, RoutedEventArgs e)
@@ -862,7 +879,7 @@ namespace Tools.Wpf
 
                 panel.ColumnCount = Math.Max(1, (int)Math.Ceiling(panel.Machines.Count / (double)panel.RowsPerColumn));
                 panel.VisibleRowCount = Math.Max(1, Math.Min(panel.RowsPerColumn, panel.Machines.Count == 0 ? 1 : panel.Machines.Count));
-                panel.ItemsHostHeight = CalculateItemsHostHeight(panel.RowsPerColumn);
+                panel.ItemsHostHeight = CalculateItemsHostHeight(panel.VisibleRowCount);
                 panel.PanelMinHeight = CalculatePanelMinHeight(panel.VisibleRowCount);
                 panel.PanelMinWidth = CalculatePanelMinWidth(panel.ColumnCount);
                 viewModel.Categories.Add(panel);
@@ -878,21 +895,19 @@ namespace Tools.Wpf
 
         private static double CalculatePanelMinHeight(int visibleRows)
         {
-            const double headerHeight = 34;
-            const double panelPadding = 16;
-            const double buttonHeight = 28;
-            const double rowGap = 4;
+            const double panelPadding = 16;   // Border padding: 8 top + 8 bottom
+            const double headerHeight = 30;   // Header content (~28) + bottom margin (2)
+            const double itemRowHeight = 32;  // Item row (button 28 + item margin bottom 4)
 
             int rows = Math.Max(1, visibleRows);
-            return headerHeight + panelPadding + (rows * buttonHeight) + ((rows - 1) * rowGap);
+            return panelPadding + headerHeight + (rows * itemRowHeight);
         }
 
         private static double CalculateItemsHostHeight(int rowsPerColumn)
         {
-            const double rowHeight = 32; // button(28) + spacing
-            const double rowGap = 4;
+            const double rowHeight = 32; // button(28) + item margin-bottom(4)
             int rows = Math.Max(1, rowsPerColumn);
-            return (rows * rowHeight) + ((rows - 1) * rowGap);
+            return rows * rowHeight;
         }
 
         private static double CalculatePanelMinWidth(int columnCount)
@@ -925,7 +940,7 @@ namespace Tools.Wpf
             const double scannerToggleWidth = ScannerToggleWidth;
             const double chromeAndMarginsWidth = 90;
             const double topSectionsHeight = 168;
-            const double logMinHeight = 10;
+            const double logMinHeight = 15;
             const double chromeAndMarginsHeight = 70;
 
             MinWidth = Math.Max(1000, viewModel.CategoriesContainerMinWidth + actionsColumnWidth + scannerToggleWidth + chromeAndMarginsWidth);
@@ -941,6 +956,10 @@ namespace Tools.Wpf
 
             if (left == null) left = new CategoryPanelModel { Name = leftCategory };
             if (right == null) right = new CategoryPanelModel { Name = rightCategory };
+
+            double pairMinHeight = Math.Max(left.PanelMinHeight, right.PanelMinHeight);
+            left.PanelMinHeight = pairMinHeight;
+            right.PanelMinHeight = pairMinHeight;
 
             viewModel.CategoryRows.Add(new CategoryRowModel
             {
@@ -1613,6 +1632,42 @@ namespace Tools.Wpf
             }
 
             return string.Empty;
+        }
+
+        private void OpenCurrentLogFile()
+        {
+            try
+            {
+                string logsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+                string todayLog = Path.Combine(logsDir, $"tools-{DateTime.Now:yyyyMMdd}.log");
+                if (File.Exists(todayLog))
+                {
+                    Process.Start(todayLog);
+                    return;
+                }
+
+                if (!Directory.Exists(logsDir))
+                {
+                    AppendLog("Log file non trovato: cartella Logs assente.", LogSeverity.Warning);
+                    return;
+                }
+
+                string latest = Directory.GetFiles(logsDir, "tools-*.log")
+                    .OrderByDescending(File.GetLastWriteTime)
+                    .FirstOrDefault();
+
+                if (!string.IsNullOrWhiteSpace(latest) && File.Exists(latest))
+                {
+                    Process.Start(latest);
+                    return;
+                }
+
+                AppendLog("Nessun file log disponibile da aprire.", LogSeverity.Warning);
+            }
+            catch (Exception ex)
+            {
+                AppendLog("Apertura log fallita: " + ex.Message, LogSeverity.Warning);
+            }
         }
 
         private static bool IsStrictCredentialModeEnabled()

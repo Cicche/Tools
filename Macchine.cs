@@ -219,12 +219,12 @@ namespace Tools
                     "Struttura: ToolsConfig/ArrayOfCategory + ToolsConfig/ArrayOfPC.\r\n-->\r\n\r\n" +
                     "<ToolsConfig>\r\n" +
                     "  <ArrayOfCategory>\r\n" +
-                    "    <CMP><usr></usr><passw></passw></CMP>\r\n" +
-                    "    <TRD><usr></usr><passw></passw></TRD>\r\n" +
-                    "    <DOK><usr></usr><passw></passw></DOK>\r\n" +
-                    "    <SERVER><usr></usr><passw></passw></SERVER>\r\n" +
-                    "    <GW><usr></usr><passw></passw></GW>\r\n" +
-                    "    <MFC><usr></usr><passw></passw></MFC>\r\n" +
+                    "    <CMP>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </CMP>\r\n" +
+                    "    <TRD>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </TRD>\r\n" +
+                    "    <DOK>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </DOK>\r\n" +
+                    "    <SERVER>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </SERVER>\r\n" +
+                    "    <GW>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </GW>\r\n" +
+                    "    <MFC>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </MFC>\r\n" +
                     "  </ArrayOfCategory>\r\n" +
                     "  <ArrayOfPC>\r\n" +
                     "    <PC>\r\n      <Type>cmp</Type>\r\n      <Nome>cmp01</Nome>\r\n      <Ip>10.1.146.156</Ip>\r\n      <User></User>\r\n      <Password></Password>\r\n    </PC>\r\n" +
@@ -251,10 +251,13 @@ namespace Tools
         private static void WriteSanitizedCategory(XmlWriter writer, string category)
         {
             writer.WriteStartElement(category);
+            writer.WriteWhitespace("\r\n      ");
             writer.WriteStartElement("usr");
             writer.WriteFullEndElement();
+            writer.WriteWhitespace("\r\n      ");
             writer.WriteStartElement("passw");
             writer.WriteFullEndElement();
+            writer.WriteWhitespace("\r\n    ");
             writer.WriteEndElement();
         }
 

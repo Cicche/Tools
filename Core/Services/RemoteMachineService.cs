@@ -113,13 +113,27 @@ namespace Tools.Core.Services
                         {
                             using (process)
                             {
-                                object raw = process.InvokeMethod("Terminate", null, null);
-                                uint terminateCode = raw == null ? 0u : Convert.ToUInt32(raw);
+                                uint terminateCode;
+                                using (ManagementBaseObject inParams = process.GetMethodParameters("Terminate"))
+                                {
+                                    // Alcuni target richiedono esplicitamente il parametro Reason.
+                                    if (inParams != null && inParams.Properties["Reason"] != null)
+                                    {
+                                        inParams["Reason"] = 0u;
+                                    }
+
+                                    using (ManagementBaseObject outParams = process.InvokeMethod("Terminate", inParams, null))
+                                    {
+                                        object rawReturn = outParams?["ReturnValue"];
+                                        terminateCode = rawReturn == null ? 0u : Convert.ToUInt32(rawReturn);
+                                    }
+                                }
+
                                 if (terminateCode != 0)
                                 {
                                     return OperationResult.Fail(
                                         $"Kill fallito su {proc}. Codice terminate: {terminateCode}",
-                                        OperationErrorCode.ExternalProcessError,
+                                        MapWmiReturnCode(terminateCode),
                                         pc);
                                 }
                             }

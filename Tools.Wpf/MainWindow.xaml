@@ -71,7 +71,7 @@
                 <Grid ClipToBounds="True">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <DockPanel Grid.Row="0" Margin="0,0,0,2">
                         <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="Bold" FontSize="12"/>
@@ -97,7 +97,11 @@
                             </Button>
                         </StackPanel>
                     </DockPanel>
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Machines}" Height="{Binding ItemsHostHeight}">
+                    <ItemsControl Grid.Row="1"
+                                  ItemsSource="{Binding Machines}"
+                                  Height="{Binding ItemsHostHeight}"
+                                  VerticalAlignment="Top"
+                                  HorizontalAlignment="Left">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel Orientation="Vertical" IsItemsHost="True"/>
@@ -371,6 +375,7 @@
 
         <Border Grid.Row="2"
                 Grid.Column="3"
+                Grid.RowSpan="3"
                 Name="ScannerPanel"
                 Margin="0,0,0,0"
                 Background="{StaticResource PanelBgBrush}"
@@ -422,6 +427,9 @@
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
                           IsReadOnly="True"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.CanContentScroll="True"
                           HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal"
                           RowHeaderWidth="0"
@@ -496,11 +504,13 @@
                        Foreground="{StaticResource PrimaryTextBrush}"/>
         </Grid>
 
-        <GroupBox Header="Log" Grid.Row="4" Grid.ColumnSpan="4" MinHeight="80">
+        <GroupBox Header="Log" Grid.Row="4" Grid.ColumnSpan="3" MinHeight="80" Padding="0">
             <RichTextBox Name="TxtLog"
-                         Margin="8"
+                         Margin="4"
                          IsReadOnly="True"
                          VerticalScrollBarVisibility="Auto"
+                         MouseDoubleClick="TxtLog_MouseDoubleClick"
+                         PreviewMouseRightButtonUp="TxtLog_PreviewMouseRightButtonUp"
                          Background="#0D1216"
                          Foreground="#7CFC00"
                          BorderBrush="#2C3E4B"
