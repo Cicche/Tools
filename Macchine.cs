@@ -81,7 +81,7 @@ namespace Tools
             {
                 writer.WriteStartDocument();
                 writer.WriteComment(
-                    "\r\nTipi possibili: CMP, TRD, DOK, SERVER, GW, MFC\r\n" +
+                    "\r\nTipi possibili: CMP, TRD, DOK, SERVER, GW, MFC, OBTS\r\n" +
                     "Non case sensitive.\r\n" +
                     "Le funzioni (ad esempio ping) vengono eseguite tramite ip, il nome e solo grafico.\r\n" +
                     "Template credenziali categoria: lasciare vuoto per massima sicurezza e usare l'app per salvarle cifrate.\r\n" +
@@ -96,6 +96,7 @@ namespace Tools
                 WriteSanitizedCategory(writer, "SERVER");
                 WriteSanitizedCategory(writer, "GW");
                 WriteSanitizedCategory(writer, "MFC");
+                WriteSanitizedCategory(writer, "OBTS");
                 writer.WriteEndElement();
 
                 writer.WriteStartElement("ArrayOfPC");
@@ -213,7 +214,7 @@ namespace Tools
             using (TextWriter writer = new StreamWriter(tempPath))
             {
                 writer.Write(
-                    "<!-- \r\nTipi possibili: CMP, TRD, DOK, SERVER, GW, MFC\r\nNon case sensitive.\r\n" +
+                    "<!-- \r\nTipi possibili: CMP, TRD, DOK, SERVER, GW, MFC, OBTS\r\nNon case sensitive.\r\n" +
                     "Le funzioni (ad esempio ping) vengono eseguite tramite ip, il nome e solo grafico.\r\n" +
                     "Template credenziali categoria: lasciare vuoto per massima sicurezza e usare l'app per salvarle cifrate.\r\n" +
                     "Struttura: ToolsConfig/ArrayOfCategory + ToolsConfig/ArrayOfPC.\r\n-->\r\n\r\n" +
@@ -225,6 +226,7 @@ namespace Tools
                     "    <SERVER>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </SERVER>\r\n" +
                     "    <GW>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </GW>\r\n" +
                     "    <MFC>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </MFC>\r\n" +
+                    "    <OBTS>\r\n      <usr></usr>\r\n      <passw></passw>\r\n    </OBTS>\r\n" +
                     "  </ArrayOfCategory>\r\n" +
                     "  <ArrayOfPC>\r\n" +
                     "    <PC>\r\n      <Type>cmp</Type>\r\n      <Nome>cmp01</Nome>\r\n      <Ip>10.1.146.156</Ip>\r\n      <User></User>\r\n      <Password></Password>\r\n    </PC>\r\n" +
@@ -290,7 +292,8 @@ namespace Tools
                 }
 
                 if (category != "CMP" && category != "TRD" && category != "DOK" &&
-                    category != "SERVER" && category != "GW" && category != "MFC")
+                    category != "SERVER" && category != "GW" && category != "MFC" &&
+                    category != "OBTS")
                 {
                     continue;
                 }

@@ -13,9 +13,21 @@ namespace Tools.Wpf
         private string retryCount = "3";
         private double categoriesContainerMinWidth = 780;
         private double categoriesContainerMinHeight = 420;
+        private CategoryPanelModel obtsCategory;
 
         public ObservableCollection<CategoryPanelModel> Categories { get; } = new ObservableCollection<CategoryPanelModel>();
         public ObservableCollection<CategoryRowModel> CategoryRows { get; } = new ObservableCollection<CategoryRowModel>();
+
+        public CategoryPanelModel ObtsCategory
+        {
+            get => obtsCategory;
+            set
+            {
+                if (ReferenceEquals(obtsCategory, value)) return;
+                obtsCategory = value;
+                OnPropertyChanged();
+            }
+        }
 
         public string XmlPath
         {

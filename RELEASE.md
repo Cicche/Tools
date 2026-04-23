@@ -2,6 +2,21 @@
 
 Questo file contiene lo storico progressivo delle release, con la versione piu recente in alto.
 
+## 2.4.0 - 2026-04-23
+
+### UI e usabilita
+- Riposizionato il toggle `OBTS` nell'area categorie (agganciato visivamente ai pannelli inferiori), invece che sul lato destro vicino alla legenda.
+- Migliorata la leggibilita delle frecce toggle (`Scanner` e `OBTS`):
+  - pulsanti con padding azzerato;
+  - font piu visibile e centratura contenuto.
+- Comportamento coerente con il layout dinamico dei pannelli categoria.
+
+### Versionamento
+- `Version`: `2.4.0`
+- `AssemblyVersion`: `2.4.0.0`
+- `FileVersion`: `2.4.0.0`
+- `InformationalVersion`: `2.4.0`
+
 ## 2.3.0 - 2026-04-20
 
 ### Migliorie

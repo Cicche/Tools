@@ -6,10 +6,10 @@
     <RootNamespace>Tools_2_0</RootNamespace>
     <AssemblyName>Tools_2.0</AssemblyName>
     <Platforms>AnyCPU</Platforms>
-    <Version>2.3.0</Version>
-    <AssemblyVersion>2.3.0.0</AssemblyVersion>
-    <FileVersion>2.3.0.0</FileVersion>
-    <InformationalVersion>2.3.0</InformationalVersion>
+    <Version>2.4.0</Version>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
+    <InformationalVersion>2.4.0</InformationalVersion>
     <Product>Tools</Product>
     <AssemblyTitle>Tools</AssemblyTitle>
   </PropertyGroup>

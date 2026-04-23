@@ -72,7 +72,8 @@ namespace Tools.Core.Services
         private static bool IsAllowedType(string type)
         {
             return type == "CMP" || type == "TRD" || type == "DOK" ||
-                   type == "SERVER" || type == "GW" || type == "MFC";
+                   type == "SERVER" || type == "GW" || type == "MFC" ||
+                   type == "OBTS";
         }
     }
 }

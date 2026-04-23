@@ -40,6 +40,25 @@
             <Setter Property="Padding" Value="8,4"/>
         </Style>
 
+        <Style x:Key="ActionButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#354654"/>
+            <Setter Property="BorderBrush" Value="#648096"/>
+            <Setter Property="Foreground" Value="#F2F7FB"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4E6679"/>
+                    <Setter Property="BorderBrush" Value="#8AB0CF"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#2A3945"/>
+                    <Setter Property="BorderBrush" Value="#A4C2DB"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="#2F3A44"/>
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
@@ -170,7 +189,7 @@
             <RowDefinition Height="44"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="0"/>
+            <RowDefinition x:Name="ObtsRow" Height="0"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -226,6 +245,7 @@
                 <Button Name="BtnCopySelected"
                         Width="88"
                         Height="24"
+                        Style="{StaticResource ActionButtonStyle}"
                         Click="BtnCopySelected_OnClick">Copy</Button>
             </StackPanel>
         </Border>
@@ -314,13 +334,13 @@
                 </Border>
 
                 <StackPanel Grid.Row="1">
-                    <Button Name="BtnPingSelected" Height="34" Margin="0,0,0,6" Click="BtnPingSelected_OnClick">Ping</Button>
-                    <Button Name="BtnRebootSelected" Height="34" Margin="0,0,0,6" Click="BtnRebootSelected_OnClick">Riavvio</Button>
-                    <Button Name="BtnShutdownSelected" Height="34" Margin="0,0,0,6" Click="BtnShutdownSelected_OnClick">Shutdown</Button>
-                    <Button Name="BtnKillSelected" Height="34" Margin="0,0,0,6" Click="BtnKillSelected_OnClick">Kill</Button>
-                    <Button Name="BtnRefreshView" Height="34" Margin="0,0,0,14" Click="BtnRefreshView_OnClick">Refresh UI</Button>
-                    <Button Name="BtnResetCredentials" Height="34" Margin="0,0,0,6" Click="BtnResetCredentials_OnClick">Reset credenziali</Button>
-                    <Button Name="BtnCancelBatch" Height="34" Margin="0,0,0,0" Click="BtnCancelBatch_OnClick" IsEnabled="False">Annulla Batch</Button>
+                    <Button Name="BtnPingSelected" Height="34" Margin="0,0,0,6" Style="{StaticResource ActionButtonStyle}" Click="BtnPingSelected_OnClick">Ping</Button>
+                    <Button Name="BtnRebootSelected" Height="34" Margin="0,0,0,6" Style="{StaticResource ActionButtonStyle}" Click="BtnRebootSelected_OnClick">Riavvio</Button>
+                    <Button Name="BtnShutdownSelected" Height="34" Margin="0,0,0,6" Style="{StaticResource ActionButtonStyle}" Click="BtnShutdownSelected_OnClick">Shutdown</Button>
+                    <Button Name="BtnKillSelected" Height="34" Margin="0,0,0,6" Style="{StaticResource ActionButtonStyle}" Click="BtnKillSelected_OnClick">Kill</Button>
+                    <Button Name="BtnRefreshView" Height="34" Margin="0,0,0,14" Style="{StaticResource ActionButtonStyle}" Click="BtnRefreshView_OnClick">Refresh UI</Button>
+                    <Button Name="BtnResetCredentials" Height="34" Margin="0,0,0,6" Style="{StaticResource ActionButtonStyle}" Click="BtnResetCredentials_OnClick">Reset credenziali</Button>
+                    <Button Name="BtnCancelBatch" Height="34" Margin="0,0,0,0" Style="{StaticResource ActionButtonStyle}" Click="BtnCancelBatch_OnClick" IsEnabled="False">Annulla Batch</Button>
                 </StackPanel>
 
                 <Border Grid.Row="3"
@@ -337,6 +357,7 @@
                                 Content="OK"
                                 IsTabStop="False"
                                 Focusable="False"
+                                IsHitTestVisible="False"
                                 Background="#74E08A"
                                 Foreground="#04110A"
                                 BorderBrush="#A3D8AF"
@@ -346,6 +367,7 @@
                                 Content="ERROR"
                                 IsTabStop="False"
                                 Focusable="False"
+                                IsHitTestVisible="False"
                                 Background="#CD5C5C"
                                 Foreground="#FFFFFF"
                                 BorderBrush="#E09090"
@@ -354,6 +376,7 @@
                                 Content="FAULT"
                                 IsTabStop="False"
                                 Focusable="False"
+                                IsHitTestVisible="False"
                                 Background="#C58B2A"
                                 Foreground="#1F1300"
                                 BorderBrush="#DDA95A"
@@ -366,12 +389,32 @@
         <Button Grid.Row="2"
                 Grid.Column="2"
                 Name="BtnScannerToggle"
-                Width="22"
+                Width="24"
                 Height="54"
                 Margin="2,8,2,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Center"
+                Padding="0"
+                FontSize="14"
+                FontWeight="Bold"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
                 Click="BtnScannerToggle_OnClick">></Button>
+
+        <Button Grid.Row="2"
+                Grid.Column="0"
+                Name="BtnObtsToggle"
+                Width="28"
+                Height="24"
+                Margin="0,0,0,4"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Center"
+                Padding="0"
+                FontSize="14"
+                FontWeight="Bold"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Click="BtnObtsToggle_OnClick">v</Button>
 
         <Border Grid.Row="2"
                 Grid.Column="3"
@@ -429,8 +472,8 @@
                 </Grid>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-                    <Button Name="BtnScanStart" Width="120" Margin="0,0,8,0" Click="BtnScanStart_OnClick">Avvia Scan</Button>
-                    <Button Name="BtnScanStop" Width="70" Click="BtnScanStop_OnClick" IsEnabled="False">Stop</Button>
+                    <Button Name="BtnScanStart" Width="120" Margin="0,0,8,0" Style="{StaticResource ActionButtonStyle}" Click="BtnScanStart_OnClick">Avvia Scan</Button>
+                    <Button Name="BtnScanStop" Width="70" Style="{StaticResource ActionButtonStyle}" Click="BtnScanStop_OnClick" IsEnabled="False">Stop</Button>
                 </StackPanel>
 
                 <DataGrid Grid.Row="3"
@@ -496,6 +539,20 @@
                     </DataGrid.ContextMenu>
                 </DataGrid>
             </Grid>
+        </Border>
+
+        <Border Grid.Row="3"
+                Grid.Column="0"
+                Name="ObtsPanel"
+                Margin="0,2,6,0"
+                Visibility="Collapsed"
+                Height="0"
+                Opacity="0"
+                ClipToBounds="True">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ObtsPanelTranslate" Y="-12"/>
+            </Border.RenderTransform>
+            <ContentControl Content="{Binding ObtsCategory}" ContentTemplate="{StaticResource CategoryPanelTemplate}"/>
         </Border>
 
         <Grid Grid.Row="3" Grid.ColumnSpan="4" Margin="0,0,0,0" Visibility="Collapsed">

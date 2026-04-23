@@ -50,12 +50,14 @@ namespace Tools.Wpf
             Copy
         }
 
-        private static readonly string[] CategoryOrder = { "CMP", "TRD", "SERVER", "GW", "DOK", "MFC" };
+        private static readonly string[] CategoryOrder = { "CMP", "TRD", "SERVER", "GW", "DOK", "MFC", "OBTS" };
         private const int MaxBatchParallelism = 8;
         private const int DefaultTimeoutMs = 8000;
         private const int DefaultRetryCount = 3;
         private const int MaxLogLines = 2000;
         private const int ScannerPanelWidth = 280;
+        private const double ObtsCollapsedHeight = 0;
+        private const int ObtsAnimationMs = 220;
         private const int ScannerToggleWidth = 26;
         private static readonly Brush SuccessBrush = Brushes.LimeGreen;  //new SolidColorBrush((Color)ColorConverter.ConvertFromString("#74E08A"));
         private static readonly Brush WarningBrush = Brushes.Yellow;  //new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C58B2A"));
@@ -73,6 +75,8 @@ namespace Tools.Wpf
         private bool isBatchRunning;
         private bool isScannerExpanded;
         private bool isScannerAnimating;
+        private bool isObtsExpanded;
+        private bool isObtsAnimating;
         private double widthBeforeScanner = double.NaN;
 
         private sealed class HostnameValidationResult
@@ -264,6 +268,83 @@ namespace Tools.Wpf
 
             ScannerPanel.BeginAnimation(UIElement.OpacityProperty, opacityAnimation);
             ScannerPanelTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, slideAnimation);
+        }
+
+        private void BtnObtsToggle_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (isObtsAnimating) return;
+            isObtsAnimating = true;
+
+            isObtsExpanded = !isObtsExpanded;
+            bool opening = isObtsExpanded;
+            double targetHeight = Math.Max(80, (viewModel.ObtsCategory?.PanelMinHeight ?? 90) + 4);
+            double currentHeight = double.IsNaN(ObtsPanel.Height)
+                ? Math.Max(ObtsPanel.ActualHeight, targetHeight)
+                : ObtsPanel.Height;
+
+            if (opening)
+            {
+                ObtsRow.Height = GridLength.Auto;
+                ObtsPanel.Visibility = Visibility.Visible;
+                ObtsPanel.Height = ObtsCollapsedHeight;
+                BtnObtsToggle.Content = "^";
+            }
+            else
+            {
+                BtnObtsToggle.Content = "v";
+            }
+
+            var heightAnimation = new DoubleAnimation
+            {
+                Duration = TimeSpan.FromMilliseconds(ObtsAnimationMs),
+                From = opening ? ObtsCollapsedHeight : currentHeight,
+                To = opening ? targetHeight : ObtsCollapsedHeight,
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = opening ? EasingMode.EaseOut : EasingMode.EaseIn
+                }
+            };
+
+            var opacityAnimation = new DoubleAnimation
+            {
+                Duration = TimeSpan.FromMilliseconds(ObtsAnimationMs),
+                To = opening ? 1 : 0,
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = opening ? EasingMode.EaseOut : EasingMode.EaseIn
+                }
+            };
+
+            var slideAnimation = new DoubleAnimation
+            {
+                Duration = TimeSpan.FromMilliseconds(ObtsAnimationMs),
+                To = opening ? 0 : -12,
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = opening ? EasingMode.EaseOut : EasingMode.EaseIn
+                }
+            };
+
+            heightAnimation.Completed += (_, __) =>
+            {
+                if (opening)
+                {
+                    ObtsPanel.Height = double.NaN;
+                }
+                else
+                {
+                    ObtsPanel.Visibility = Visibility.Collapsed;
+                    ObtsPanel.Height = ObtsCollapsedHeight;
+                    ObtsRow.Height = new GridLength(0);
+                }
+
+                RecalculateWindowConstraints();
+                isObtsAnimating = false;
+            };
+
+            ObtsPanel.BeginAnimation(FrameworkElement.HeightProperty, heightAnimation);
+            ObtsPanel.BeginAnimation(UIElement.OpacityProperty, opacityAnimation);
+            ObtsPanelTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, slideAnimation);
         }
 
         private async void BtnScanStart_OnClick(object sender, RoutedEventArgs e)
@@ -900,6 +981,18 @@ namespace Tools.Wpf
             AddCategoryRow("CMP", "TRD");
             AddCategoryRow("SERVER", "GW");
             AddCategoryRow("DOK", "MFC");
+            viewModel.ObtsCategory = viewModel.Categories.FirstOrDefault(c =>
+                string.Equals(c.Name, "OBTS", StringComparison.OrdinalIgnoreCase))
+                ?? new CategoryPanelModel
+                {
+                    Name = "OBTS",
+                    RowsPerColumn = 5,
+                    ColumnCount = 1,
+                    VisibleRowCount = 1,
+                    ItemsHostHeight = CalculateItemsHostHeight(1),
+                    PanelMinHeight = CalculatePanelMinHeight(1),
+                    PanelMinWidth = CalculatePanelMinWidth(1)
+                };
 
             RecalculateWindowConstraints();
         }
@@ -946,6 +1039,7 @@ namespace Tools.Wpf
 
             viewModel.CategoriesContainerMinWidth = Math.Max(760, leftWidth + rightWidth + 8);
             viewModel.CategoriesContainerMinHeight = Math.Max(260, categoriesMinHeight);
+            double obtsHeight = isObtsExpanded ? (viewModel.ObtsCategory?.PanelMinHeight ?? 0) + 2 : 0;
 
             const double actionsColumnWidth = 214;
             const double scannerToggleWidth = ScannerToggleWidth;
@@ -955,7 +1049,7 @@ namespace Tools.Wpf
             const double chromeAndMarginsHeight = 70;
 
             MinWidth = Math.Max(1000, viewModel.CategoriesContainerMinWidth + actionsColumnWidth + scannerToggleWidth + chromeAndMarginsWidth);
-            MinHeight = Math.Max(700, topSectionsHeight + viewModel.CategoriesContainerMinHeight + logMinHeight + chromeAndMarginsHeight);
+            MinHeight = Math.Max(700, topSectionsHeight + viewModel.CategoriesContainerMinHeight + obtsHeight + logMinHeight + chromeAndMarginsHeight);
         }
 
         private void AddCategoryRow(string leftCategory, string rightCategory)
