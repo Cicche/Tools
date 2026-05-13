@@ -8,6 +8,8 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -47,7 +49,8 @@ namespace Tools.Wpf
             Reboot,
             Shutdown,
             Kill,
-            Copy
+            Copy,
+            Delete
         }
 
         private static readonly string[] CategoryOrder = { "CMP", "TRD", "SERVER", "GW", "DOK", "MFC", "OBTS" };
@@ -85,6 +88,8 @@ namespace Tools.Wpf
             public bool IsMatch { get; set; }
             public string Expected { get; set; }
             public string Resolved { get; set; }
+            public string ResolvedDns { get; set; }
+            public string ResolvedNetBios { get; set; }
             public string Error { get; set; }
         }
 
@@ -108,6 +113,7 @@ namespace Tools.Wpf
         public MainWindow()
         {
             InitializeComponent();
+            SetWindowTitle();
             DataContext = viewModel;
             viewModel.XmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tool_List.xml");
             DgScanResults.ItemsSource = scanResults;
@@ -118,6 +124,19 @@ namespace Tools.Wpf
             };
             InitializeScanNetworkOptions();
             LoadMachines();
+        }
+
+        private void SetWindowTitle()
+        {
+            string version = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+            }
+
+            string title = $"TOOLS - {version}";
+            Title = title;
+            TxtWindowTitle.Text = title;
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -169,6 +188,11 @@ namespace Tools.Wpf
         private async void BtnCopySelected_OnClick(object sender, RoutedEventArgs e)
         {
             await RunBatchAsync(BatchOperation.Copy);
+        }
+
+        private async void BtnDeleteSelected_OnClick(object sender, RoutedEventArgs e)
+        {
+            await RunBatchAsync(BatchOperation.Delete);
         }
 
         private void BtnRefreshView_OnClick(object sender, RoutedEventArgs e)
@@ -428,6 +452,13 @@ namespace Tools.Wpf
             viewModel.CopyOrigin = selected;
         }
 
+        private void BtnBrowseDeletePath_OnClick(object sender, RoutedEventArgs e)
+        {
+            string selected = SelectFolderPath(ConvertAdminSharePathToLocalPath(viewModel.DeletePath));
+            if (string.IsNullOrWhiteSpace(selected)) return;
+            viewModel.DeletePath = ConvertLocalPathToAdminSharePath(selected);
+        }
+
         private void TxtLog_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             OpenCurrentLogFile();
@@ -642,6 +673,19 @@ namespace Tools.Wpf
                 return;
             }
 
+            if (operation == BatchOperation.Delete && !TryValidateDeletePathForUi(viewModel.DeletePath, out string deletePathError))
+            {
+                AppendLog("DELETE - " + deletePathError, LogSeverity.Warning);
+                return;
+            }
+
+            if (RequiresDestructiveConfirmation(operation) &&
+                !ConfirmDestructiveBatch(operation, targetRows))
+            {
+                AppendLog($"Batch {operation} annullato dall'utente prima dell'invio.", LogSeverity.Warning);
+                return;
+            }
+
             if (RequiresCredentials(operation))
             {
                 var missingCredentials = targetRows.Where(r => !HasResolvedCredentials(r)).ToList();
@@ -814,8 +858,10 @@ namespace Tools.Wpf
                         {
                             row.Background = WarningBrush;
                             row.Status = "WARN NAME";
+                            string dnsPart = string.IsNullOrWhiteSpace(validation.ResolvedDns) ? "-" : validation.ResolvedDns;
+                            string nbPart = string.IsNullOrWhiteSpace(validation.ResolvedNetBios) ? "-" : validation.ResolvedNetBios;
                             AppendLog(
-                                $"[PING] {row.Name} ({row.Ip}) - WARNING [HOSTNAME_MISMATCH] atteso={validation.Expected} risolto={validation.Resolved}",
+                                $"[PING] {row.Name} ({row.Ip}) - WARNING [HOSTNAME_MISMATCH] atteso={validation.Expected} dns={dnsPart} netbios={nbPart}",
                                 LogSeverity.Warning);
                         });
                     }
@@ -850,6 +896,12 @@ namespace Tools.Wpf
                         () => coreFacade.CopyFolderAsync(machine, viewModel.CopyOrigin, viewModel.CopyDestination),
                         machine,
                         "COPY",
+                        token);
+                case BatchOperation.Delete:
+                    return ExecuteWithPolicyAsync(
+                        () => coreFacade.DeleteRemotePathAsync(machine, viewModel.DeletePath),
+                        machine,
+                        "DELETE",
                         token);
                 default:
                     return Task.FromResult(OperationResult.Fail("Operazione non supportata.", OperationErrorCode.InvalidInput, machine));
@@ -946,7 +998,11 @@ namespace Tools.Wpf
                 var panel = new CategoryPanelModel
                 {
                     Name = category,
-                    RowsPerColumn = category == "SERVER" || category == "GW" ? 2 : 5
+                    RowsPerColumn = category == "SERVER" || category == "GW"
+                        ? 2
+                        : category == "OBTS"
+                            ? 1
+                            : 5
                 };
 
                 var categoryMachines = loadedMachines
@@ -1037,7 +1093,7 @@ namespace Tools.Wpf
                 categoriesMinHeight += Math.Max(row.Left?.PanelMinHeight ?? 0, row.Right?.PanelMinHeight ?? 0) + 2;
             }
 
-            viewModel.CategoriesContainerMinWidth = Math.Max(760, leftWidth + rightWidth + 8);
+            viewModel.CategoriesContainerMinWidth = Math.Max(320, leftWidth + rightWidth + 8);
             viewModel.CategoriesContainerMinHeight = Math.Max(260, categoriesMinHeight);
             double obtsHeight = isObtsExpanded ? (viewModel.ObtsCategory?.PanelMinHeight ?? 0) + 2 : 0;
 
@@ -1048,7 +1104,7 @@ namespace Tools.Wpf
             const double logMinHeight = 15;
             const double chromeAndMarginsHeight = 70;
 
-            MinWidth = Math.Max(1000, viewModel.CategoriesContainerMinWidth + actionsColumnWidth + scannerToggleWidth + chromeAndMarginsWidth);
+            MinWidth = Math.Max(720, viewModel.CategoriesContainerMinWidth + actionsColumnWidth + scannerToggleWidth + chromeAndMarginsWidth);
             MinHeight = Math.Max(700, topSectionsHeight + viewModel.CategoriesContainerMinHeight + obtsHeight + logMinHeight + chromeAndMarginsHeight);
         }
 
@@ -1179,6 +1235,7 @@ namespace Tools.Wpf
             BtnShutdownSelected.IsEnabled = enabled;
             BtnKillSelected.IsEnabled = enabled;
             BtnCopySelected.IsEnabled = enabled;
+            BtnDeleteSelected.IsEnabled = enabled;
             BtnRefreshView.IsEnabled = enabled;
             BtnResetCredentials.IsEnabled = enabled;
             TxtTimeoutMs.IsEnabled = enabled;
@@ -1186,6 +1243,8 @@ namespace Tools.Wpf
             TxtCopyOrigin.IsEnabled = enabled;
             TxtCopyDestination.IsEnabled = enabled;
             BtnBrowseCopyOrigin.IsEnabled = enabled;
+            TxtDeletePath.IsEnabled = enabled;
+            BtnBrowseDeletePath.IsEnabled = enabled;
         }
 
         private static string SelectFolderPath(string initialPath)
@@ -1204,6 +1263,68 @@ namespace Tools.Wpf
                 if (result != Forms.DialogResult.OK) return string.Empty;
                 return dialog.SelectedPath ?? string.Empty;
             }
+        }
+
+        private static string ConvertLocalPathToAdminSharePath(string localPath)
+        {
+            if (string.IsNullOrWhiteSpace(localPath)) return string.Empty;
+
+            string normalized = localPath.Trim().Replace('/', '\\');
+            string root = Path.GetPathRoot(normalized);
+            if (string.IsNullOrWhiteSpace(root) || root.Length < 2 || root[1] != ':')
+            {
+                return normalized;
+            }
+
+            string tail = normalized.Substring(root.Length).TrimStart('\\');
+            string share = char.ToUpperInvariant(root[0]) + "$";
+            return string.IsNullOrWhiteSpace(tail) ? share : share + "\\" + tail;
+        }
+
+        private static string ConvertAdminSharePathToLocalPath(string adminSharePath)
+        {
+            if (string.IsNullOrWhiteSpace(adminSharePath)) return string.Empty;
+
+            string normalized = adminSharePath.Trim().Replace('/', '\\').TrimStart('\\');
+            if (normalized.Length >= 2 &&
+                char.IsLetter(normalized[0]) &&
+                normalized[1] == '$')
+            {
+                string tail = normalized.Length > 2 ? normalized.Substring(2).TrimStart('\\') : string.Empty;
+                string driveRoot = char.ToUpperInvariant(normalized[0]) + @":\";
+                return string.IsNullOrWhiteSpace(tail) ? driveRoot : Path.Combine(driveRoot, tail);
+            }
+
+            return normalized;
+        }
+
+        private static bool TryValidateDeletePathForUi(string deletePath, out string error)
+        {
+            error = string.Empty;
+            string normalized = (deletePath ?? string.Empty).Trim().Replace('/', '\\').TrimStart('\\');
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                error = "Percorso mancante.";
+                return false;
+            }
+
+            int slashIndex = normalized.IndexOf('\\');
+            string firstPart = slashIndex < 0 ? normalized : normalized.Substring(0, slashIndex);
+            string tail = slashIndex < 0 ? string.Empty : normalized.Substring(slashIndex + 1).Trim('\\');
+            bool hasAdminShare = firstPart.Length == 2 && char.IsLetter(firstPart[0]) && firstPart[1] == '$';
+            if (!hasAdminShare || string.IsNullOrWhiteSpace(tail))
+            {
+                error = "Percorso non sicuro. Usa un path tipo C$\\Example\\temp, non la radice dello share.";
+                return false;
+            }
+
+            if (tail == "." || tail == ".." || tail.IndexOf("..\\", StringComparison.Ordinal) >= 0 || tail.IndexOf("\\..", StringComparison.Ordinal) >= 0)
+            {
+                error = "Percorso non sicuro.";
+                return false;
+            }
+
+            return true;
         }
 
         private static XmlSchemaKind DetectXmlSchemaKind(string xmlPath)
@@ -1282,6 +1403,7 @@ namespace Tools.Wpf
                                 IsRetryable(last) &&
                                 !string.Equals(operationName, "PING", StringComparison.OrdinalIgnoreCase) &&
                                 !string.Equals(operationName, "COPY", StringComparison.OrdinalIgnoreCase) &&
+                                !string.Equals(operationName, "DELETE", StringComparison.OrdinalIgnoreCase) &&
                                 last.Code != OperationErrorCode.Timeout;
                 if (!canRetry) return last;
 
@@ -1328,7 +1450,159 @@ namespace Tools.Wpf
         {
             return operation == BatchOperation.Reboot ||
                    operation == BatchOperation.Shutdown ||
-                   operation == BatchOperation.Kill;
+                   operation == BatchOperation.Kill ||
+                   operation == BatchOperation.Delete;
+        }
+
+        private static bool RequiresDestructiveConfirmation(BatchOperation operation)
+        {
+            return operation == BatchOperation.Reboot ||
+                   operation == BatchOperation.Shutdown ||
+                   operation == BatchOperation.Delete;
+        }
+
+        private bool ConfirmDestructiveBatch(BatchOperation operation, IList<MachineRow> targetRows)
+        {
+            string operationLabel = GetDestructiveOperationLabel(operation);
+            int count = targetRows?.Count ?? 0;
+            string preview = string.Join(", ", (targetRows ?? Array.Empty<MachineRow>())
+                .Take(6)
+                .Select(r => r?.Name)
+                .Where(n => !string.IsNullOrWhiteSpace(n)));
+            if (count > 6)
+            {
+                preview += ", ...";
+            }
+
+            var dialog = new Window
+            {
+                Title = "Conferma comando",
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.None,
+                Width = 440,
+                Height = 230,
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1E252C")),
+                ShowInTaskbar = false
+            };
+
+            var border = new Border
+            {
+                Margin = new Thickness(1),
+                Padding = new Thickness(14),
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2A343E")),
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#546575")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6)
+            };
+
+            var root = new Grid();
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var title = new TextBlock
+            {
+                Text = $"Conferma {operationLabel}",
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                FontSize = 16,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            Grid.SetRow(title, 0);
+            root.Children.Add(title);
+
+            var message = new TextBlock
+            {
+                Text = BuildDestructiveConfirmationMessage(operation, operationLabel, count),
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E6EDF3")),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            Grid.SetRow(message, 1);
+            root.Children.Add(message);
+
+            var machines = new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(preview) ? "Nessun dettaglio macchina disponibile." : preview,
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C58B2A")),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 14)
+            };
+            Grid.SetRow(machines, 2);
+            root.Children.Add(machines);
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+
+            var cancel = CreateDialogButton("Annulla", false);
+            cancel.Margin = new Thickness(0, 0, 8, 0);
+            cancel.Click += (_, __) =>
+            {
+                dialog.DialogResult = false;
+                dialog.Close();
+            };
+
+            var confirm = CreateDialogButton($"Esegui {operationLabel}", true);
+            confirm.Click += (_, __) =>
+            {
+                dialog.DialogResult = true;
+                dialog.Close();
+            };
+
+            buttons.Children.Add(cancel);
+            buttons.Children.Add(confirm);
+            Grid.SetRow(buttons, 3);
+            root.Children.Add(buttons);
+
+            border.Child = root;
+            dialog.Content = border;
+            return dialog.ShowDialog() == true;
+        }
+
+        private static string GetDestructiveOperationLabel(BatchOperation operation)
+        {
+            switch (operation)
+            {
+                case BatchOperation.Reboot:
+                    return "RIAVVIO";
+                case BatchOperation.Shutdown:
+                    return "SHUTDOWN";
+                case BatchOperation.Delete:
+                    return "DELETE";
+                default:
+                    return operation.ToString().ToUpperInvariant();
+            }
+        }
+
+        private string BuildDestructiveConfirmationMessage(BatchOperation operation, string operationLabel, int count)
+        {
+            if (operation == BatchOperation.Delete)
+            {
+                return $"Stai per eliminare il percorso '{viewModel.DeletePath}' da {count} macchina/e selezionata/e.";
+            }
+
+            return $"Stai per eseguire {operationLabel} su {count} macchina/e selezionata/e.";
+        }
+
+        private static Button CreateDialogButton(string text, bool primary)
+        {
+            return new Button
+            {
+                Content = text,
+                Width = primary ? 130 : 92,
+                Height = 32,
+                Padding = new Thickness(8, 4, 8, 4),
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(primary ? "#4E6679" : "#354654")),
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(primary ? "#8AB0CF" : "#648096")),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.SemiBold
+            };
         }
 
         private static bool HasResolvedCredentials(MachineRow row)
@@ -1735,16 +2009,40 @@ namespace Tools.Wpf
 
             try
             {
-                IPHostEntry hostEntry = await Dns.GetHostEntryAsync(machine.Ip);
                 string expected = NormalizeHostName(machine.Nome);
-                string resolved = NormalizeHostName(hostEntry?.HostName ?? string.Empty);
+                string resolvedDns = string.Empty;
+                string resolvedNetBios = string.Empty;
+
+                try
+                {
+                    IPHostEntry hostEntry = await Dns.GetHostEntryAsync(machine.Ip);
+                    resolvedDns = NormalizeHostName(hostEntry?.HostName ?? string.Empty);
+                }
+                catch
+                {
+                    resolvedDns = string.Empty;
+                }
+
+                try
+                {
+                    resolvedNetBios = await ResolveNetBiosNameAsync(machine.Ip, 1800);
+                    resolvedNetBios = NormalizeHostName(resolvedNetBios);
+                }
+                catch
+                {
+                    resolvedNetBios = string.Empty;
+                }
+
+                string resolved = !string.IsNullOrWhiteSpace(resolvedNetBios)
+                    ? resolvedNetBios
+                    : resolvedDns;
 
                 result.Checked = true;
                 result.Expected = expected;
                 result.Resolved = resolved;
-                result.IsMatch = !string.IsNullOrWhiteSpace(expected) &&
-                                 !string.IsNullOrWhiteSpace(resolved) &&
-                                 string.Equals(expected, resolved, StringComparison.OrdinalIgnoreCase);
+                result.ResolvedDns = resolvedDns;
+                result.ResolvedNetBios = resolvedNetBios;
+                result.IsMatch = IsHostNameMatch(expected, resolvedDns, resolvedNetBios);
                 return result;
             }
             catch (Exception ex)
@@ -1770,7 +2068,71 @@ namespace Tools.Wpf
                 normalized = normalized.Substring(0, normalized.Length - 1);
             }
 
-            return normalized.Trim().ToUpperInvariant();
+            normalized = normalized.Trim().ToUpperInvariant();
+            normalized = normalized.Replace('_', '-');
+            return normalized;
+        }
+
+        private static bool IsHostNameMatch(string expected, string resolvedDns, string resolvedNetBios)
+        {
+            if (string.IsNullOrWhiteSpace(expected)) return false;
+            if (string.Equals(expected, resolvedDns, StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(expected, resolvedNetBios, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        private static async Task<string> ResolveNetBiosNameAsync(string ip, int timeoutMs)
+        {
+            if (string.IsNullOrWhiteSpace(ip)) return string.Empty;
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "nbtstat",
+                Arguments = "-A " + ip,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using (var process = new Process { StartInfo = psi })
+            {
+                if (!process.Start()) return string.Empty;
+
+                Task<string> outTask = process.StandardOutput.ReadToEndAsync();
+                Task<string> errTask = process.StandardError.ReadToEndAsync();
+                bool exited = await Task.Run(() => process.WaitForExit(timeoutMs));
+                if (!exited)
+                {
+                    try { process.Kill(); } catch { }
+                    return string.Empty;
+                }
+
+                string output = await outTask;
+                string _ = await errTask;
+                return ParseNetBiosComputerName(output);
+            }
+        }
+
+        private static string ParseNetBiosComputerName(string output)
+        {
+            if (string.IsNullOrWhiteSpace(output)) return string.Empty;
+            string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string raw in lines)
+            {
+                string line = raw.Trim();
+                if (line.IndexOf("<00>", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                if (line.IndexOf("UNIQUE", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                if (line.IndexOf("GROUP", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+
+                var m = Regex.Match(line, @"^([A-Za-z0-9_\-]+)\s+<00>", RegexOptions.IgnoreCase);
+                if (m.Success)
+                {
+                    return m.Groups[1].Value.Trim();
+                }
+            }
+
+            return string.Empty;
         }
 
         private static string ExtractCategoryTag(object sender)

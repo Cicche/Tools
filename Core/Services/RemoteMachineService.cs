@@ -303,6 +303,79 @@ namespace Tools.Core.Services
             return Task.Run(() => CopyFolder(pc, origin, destination));
         }
 
+        public OperationResult DeleteRemotePath(PC pc, string targetPath)
+        {
+            OperationResult validation = ValidateMachine(pc);
+            if (!validation.Success) return validation;
+
+            string connectedShare = null;
+            try
+            {
+                if (!TryValidateRemoteDeleteTarget(targetPath, out string validationError))
+                {
+                    return OperationResult.Fail(validationError, OperationErrorCode.InvalidInput, pc);
+                }
+
+                if (!TryResolveCredentials(pc, out string user, out string password))
+                {
+                    return OperationResult.Fail("Credenziali non disponibili.", OperationErrorCode.CredentialsMissing, pc);
+                }
+
+                using (var ping = new Ping())
+                {
+                    var reply = ping.Send(pc.Ip, 1000);
+                    if (reply.Status != IPStatus.Success)
+                    {
+                        return OperationResult.Fail($"Host non raggiungibile ({reply.Status}).", OperationErrorCode.NetworkUnreachable, pc);
+                    }
+                }
+
+                string targetShare = BuildTargetShare(pc.Ip, targetPath);
+                int connectCode = ConnectShare(targetShare, user, password);
+                if (connectCode != 0)
+                {
+                    return OperationResult.Fail($"Connessione share fallita (codice {connectCode}).", OperationErrorCode.ExternalProcessError, pc);
+                }
+                connectedShare = targetShare;
+
+                string remotePath = BuildRemoteDestinationPath(pc.Ip, targetPath);
+                if (File.Exists(remotePath))
+                {
+                    File.Delete(remotePath);
+                    return OperationResult.Ok("File remoto eliminato.", pc);
+                }
+
+                if (Directory.Exists(remotePath))
+                {
+                    Directory.Delete(remotePath, true);
+                    return OperationResult.Ok("Cartella remota eliminata.", pc);
+                }
+
+                return OperationResult.Fail($"Percorso remoto non trovato: {remotePath}", OperationErrorCode.ExternalProcessError, pc);
+            }
+            catch (IOException ioEx)
+            {
+                return OperationResult.Fail(ioEx.Message, OperationErrorCode.ExternalProcessError, pc);
+            }
+            catch (UnauthorizedAccessException unAuth)
+            {
+                return OperationResult.Fail(unAuth.Message, OperationErrorCode.Unauthorized, pc);
+            }
+            catch (Exception ex)
+            {
+                return OperationResult.Fail(ex.Message, OperationErrorCode.ExternalProcessError, pc);
+            }
+            finally
+            {
+                DisconnectShare(connectedShare);
+            }
+        }
+
+        public Task<OperationResult> DeleteRemotePathAsync(PC pc, string targetPath)
+        {
+            return Task.Run(() => DeleteRemotePath(pc, targetPath));
+        }
+
         private bool TryResolveCredentials(PC pc, out string user, out string password)
         {
             return credentialService.TryGetCredentials(pc, out user, out password);
@@ -494,6 +567,36 @@ namespace Tools.Core.Services
             }
 
             return false;
+        }
+
+        private static bool TryValidateRemoteDeleteTarget(string targetPath, out string error)
+        {
+            error = string.Empty;
+            string normalized = NormalizeDestination(targetPath);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                error = "Percorso delete mancante.";
+                return false;
+            }
+
+            if (!TrySplitShareAndTail(normalized, out _, out string tail) || string.IsNullOrWhiteSpace(tail))
+            {
+                error = "Percorso delete non sicuro. Usa un path esplicito tipo C$\\Example\\temp, non la radice dello share.";
+                return false;
+            }
+
+            string cleanedTail = tail.Trim().Trim('\\');
+            if (string.IsNullOrWhiteSpace(cleanedTail) ||
+                cleanedTail == "." ||
+                cleanedTail == ".." ||
+                cleanedTail.IndexOf("..\\", StringComparison.Ordinal) >= 0 ||
+                cleanedTail.IndexOf("\\..", StringComparison.Ordinal) >= 0)
+            {
+                error = "Percorso delete non sicuro.";
+                return false;
+            }
+
+            return true;
         }
 
         private static void CopyPath(string sourcePath, string destinationPath)

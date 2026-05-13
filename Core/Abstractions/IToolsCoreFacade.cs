@@ -22,5 +22,6 @@ namespace Tools.Core.Abstractions
         Task<OperationResult> OpenFolderAsync(PC machine);
         Task<OperationResult> OpenRemoteDesktopAsync(PC machine);
         Task<OperationResult> CopyFolderAsync(PC machine, string origin, string destination);
+        Task<OperationResult> DeleteRemotePathAsync(PC machine, string targetPath);
     }
 }

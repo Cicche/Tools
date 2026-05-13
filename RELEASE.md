@@ -2,6 +2,61 @@
 
 Questo file contiene lo storico progressivo delle release, con la versione piu recente in alto.
 
+## 2.6.0 - 2026-05-13
+
+### UI e layout
+- Ridotta la larghezza minima reale della finestra quando i pannelli categoria contengono una sola colonna di macchine.
+- I pannelli categoria usano ora una larghezza minima derivata dal contenuto, evitando spazio vuoto inutile quando possibile.
+- Il pannello `Copy` termina subito dopo il pulsante `Copy`; aggiunto un pannello separato `Delete remoto` sulla stessa riga.
+- Bordo verde di selezione macchina ridotto da 6 a 4 per maggiore leggibilita senza invadere troppo il bottone.
+
+### Delete remoto
+- Aggiunta operazione batch `Delete` sulle macchine selezionate.
+- Il path viene espresso in formato admin share, ad esempio `C$\Example\temp`.
+- Il comando risolve il path per ogni target come `\\<IP_TARGET>\C$\Example\temp`.
+- Aggiunta conferma obbligatoria in stile `Reboot/Shutdown`, con elenco macchine e percorso da cancellare.
+- Aggiunte protezioni base: blocco path vuoti, radici admin share tipo `C$` e path con traversal `..`.
+- L'operazione usa pre-ping, credenziali cifrate e connessione SMB temporanea come la Copy.
+
+### Release package
+- `README.md` e `RELEASE.md` vengono preparati anche in `Tools.Wpf\bin\Release\net472`, insieme all'eseguibile Release.
+
+### Versionamento
+- `Version`: `2.6.0`
+- `AssemblyVersion`: `2.6.0.0`
+- `FileVersion`: `2.6.0.0`
+- `InformationalVersion`: `2.6.0`
+
+## 2.5.0 - 2026-05-08
+
+### Migliorie hostname scanner/ping
+- Verifica hostname migliorata per ridurre falsi mismatch dovuti a DNS/PTR locali non coerenti.
+- Confronto ora eseguito su:
+  - nome DNS normalizzato (senza dominio/workgroup),
+  - fallback nome NetBIOS (`nbtstat -A`) normalizzato.
+- Nei log mismatch vengono mostrati separatamente `dns=` e `netbios=` per diagnosi piu chiara.
+
+### Categoria OBTS a scomparsa
+- Pannello `OBTS` reso dinamico con layout orizzontale prima del ritorno a capo (sfrutta la larghezza disponibile, poi scende di riga).
+- Ridotta la probabilita di taglio degli elementi quando aumentano le macchine in categoria.
+
+### Password: modalita visibile
+- Aggiunta opzione `Mostra` nei form:
+  - Aggiunta macchina,
+  - Edit macchina,
+  - Credenziali categoria.
+- Password e conferma restano sincronizzate sia in vista nascosta sia in vista testuale.
+
+### Lista risultati IP scanner
+- Migliorata evidenziazione riga in hover/selezione per rendere piu chiaro quale macchina si sta per aggiungere.
+- Contrasto testo mantenuto alto anche su riga selezionata.
+
+### Versionamento
+- `Version`: `2.5.0`
+- `AssemblyVersion`: `2.5.0.0`
+- `FileVersion`: `2.5.0.0`
+- `InformationalVersion`: `2.5.0`
+
 ## 2.4.0 - 2026-04-23
 
 ### UI e usabilita
@@ -80,4 +135,3 @@ Questo file contiene lo storico progressivo delle release, con la versione piu r
 - `AssemblyVersion`: `2.0.0.0`
 - `FileVersion`: `2.0.0.0`
 - `InformationalVersion`: `2.0.0`
-

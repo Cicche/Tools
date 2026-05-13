@@ -3,7 +3,7 @@
 Software desktop WPF per gestione operativa di macchine in rete LAN:
 - caricamento macchine da XML
 - gestione credenziali cifrate
-- operazioni batch (Ping, Riavvio, Shutdown, Kill, Copy)
+- operazioni batch (Ping, Riavvio, Shutdown, Kill, Copy, Delete remoto)
 - accesso remoto (File Explorer, Desktop Remoto)
 - scanner IP integrato
 
@@ -32,7 +32,7 @@ Formato moderno supportato:
 - sezioni: `ArrayOfCategory` e `ArrayOfPC`
 
 Categorie standard:
-- `CMP`, `TRD`, `DOK`, `SERVER`, `GW`, `MFC`
+- `CMP`, `TRD`, `DOK`, `SERVER`, `GW`, `MFC`, `OBTS`
 
 Ogni macchina usa:
 - `Type`
@@ -78,6 +78,23 @@ Formato destinazione copy consigliato:
 
 La destinazione viene risolta per ogni macchina selezionata sul proprio IP:
 - esempio: `C$\Example\temp` -> `\\<IP_TARGET>\C$\Example\temp`
+
+Da riga Delete remoto:
+- campo `Delete remoto` manuale o valorizzato tramite pulsante cartella
+- pulsante `Delete`
+- conferma obbligatoria prima dell'esecuzione
+
+Formato delete consigliato:
+- `C$\Example\temp`
+- `D$\Deploy\old`
+
+Il percorso viene risolto per ogni macchina selezionata sul proprio IP:
+- esempio: `C$\Example\temp` -> `\\<IP_TARGET>\C$\Example\temp`
+
+Protezioni delete:
+- non accetta path vuoti
+- non accetta radici admin share come `C$`
+- non accetta path con traversal `..`
 
 ## Selezione macchine
 - click sinistro su pannello categoria: seleziona tutte le macchine della categoria

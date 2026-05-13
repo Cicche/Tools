@@ -9,6 +9,7 @@ namespace Tools.Wpf
         private string xmlPath = "Tool_List.xml";
         private string copyOrigin = string.Empty;
         private string copyDestination = "C$\\Example\\temp";
+        private string deletePath = "C$\\Example\\temp";
         private string timeoutMs = "8000";
         private string retryCount = "3";
         private double categoriesContainerMinWidth = 780;
@@ -58,6 +59,17 @@ namespace Tools.Wpf
             {
                 if (copyDestination == value) return;
                 copyDestination = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string DeletePath
+        {
+            get => deletePath;
+            set
+            {
+                if (deletePath == value) return;
+                deletePath = value;
                 OnPropertyChanged();
             }
         }

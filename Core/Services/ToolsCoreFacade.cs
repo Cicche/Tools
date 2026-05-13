@@ -130,5 +130,10 @@ namespace Tools.Core.Services
         {
             return machineOperationService.CopyFolderAsync(machine, origin, destination);
         }
+
+        public Task<OperationResult> DeleteRemotePathAsync(PC machine, string targetPath)
+        {
+            return machineOperationService.DeleteRemotePathAsync(machine, targetPath);
+        }
     }
 }
